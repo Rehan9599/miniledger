@@ -319,5 +319,3 @@ Phone App                     Backend Server                    Database
 | Constant | Description |
 |---|---|
 | `API_BASE` | Your computer's local IP + port (e.g., `http://192.168.1.42:3000/api`) |
-
-> ⚠️ **Never commit `.env` files** — they contain secrets. Use `.env.example` as a template.
