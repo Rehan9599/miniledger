@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment files (contain secrets — never commit these)
+.env
+**/.env
+
+# Build outputs
+dist/
+**/dist/
+
+# Expo
+.expo/
+**/.expo/
+web-build/
+expo-env.d.ts
+
+# Prisma generated
+backend/node_modules/.prisma/
+
+# Logs
+*.log
+npm-debug.*
+
+# OS files
+.DS_Store
+Thumbs.db
