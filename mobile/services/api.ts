@@ -5,7 +5,8 @@ import * as SecureStore from "expo-secure-store";
 // Find it by running: ipconfig (in PowerShell)
 // Look for "IPv4 Address" under your WiFi adapter (e.g., 192.168.1.42)
 // Expo Go on your phone connects over WiFi, so "localhost" won't work!
-const API_BASE = "http://10.253.10.186:3000/api";
+export const SERVER_BASE = "http://10.253.10.186:3000";
+const API_BASE = `${SERVER_BASE}/api`;
 
 const api = axios.create({
     baseURL: API_BASE,

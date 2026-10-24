@@ -7,9 +7,13 @@ import {
   StyleSheet,
   RefreshControl,
   Alert,
+  Image,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
-import { loanApi, summaryApi } from "../../services/api";
+import * as ImagePicker from "expo-image-picker";
+import { loanApi, summaryApi, SERVER_BASE } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 
 interface Loan {
@@ -35,6 +39,8 @@ export default function DashboardScreen() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [viewingReceipt, setViewingReceipt] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -81,6 +87,71 @@ export default function DashboardScreen() {
         },
       ]
     );
+  };
+
+  const showReceiptOptions = (loan: Loan) => {
+    Alert.alert("Attach Receipt", "Choose a source", [
+      {
+        text: "📷 Take Photo",
+        onPress: () => handleUploadReceipt(loan, "camera"),
+      },
+      {
+        text: "🖼️ Choose from Gallery",
+        onPress: () => handleUploadReceipt(loan, "gallery"),
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const handleUploadReceipt = async (
+    loan: Loan,
+    source: "camera" | "gallery"
+  ) => {
+    try {
+      if (source === "camera") {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert(
+            "Permission Needed",
+            "Camera access is required to take a receipt photo."
+          );
+          return;
+        }
+      } else {
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert(
+            "Permission Needed",
+            "Gallery access is required to select a receipt photo."
+          );
+          return;
+        }
+      }
+
+      const pickerFn =
+        source === "camera"
+          ? ImagePicker.launchCameraAsync
+          : ImagePicker.launchImageLibraryAsync;
+
+      const result = await pickerFn({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (result.canceled) return;
+
+      setUploadingId(loan.id);
+      await loanApi.uploadReceipt(loan.id, result.assets[0].uri);
+      await fetchData();
+      Alert.alert("Success", "Receipt uploaded successfully!");
+    } catch (error) {
+      Alert.alert("Error", "Failed to upload receipt. Please try again.");
+      console.error("Receipt upload error:", error);
+    } finally {
+      setUploadingId(null);
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -155,6 +226,36 @@ export default function DashboardScreen() {
           <Text style={styles.repayButtonText}>Mark as Repaid</Text>
         </TouchableOpacity>
       )}
+
+      {/* Receipt Section */}
+      {uploadingId === item.id ? (
+        <View style={styles.receiptLoading}>
+          <ActivityIndicator size="small" color="#8B5CF6" />
+          <Text style={styles.receiptLoadingText}>Uploading receipt…</Text>
+        </View>
+      ) : item.receiptUrl ? (
+        <TouchableOpacity
+          style={styles.receiptPreview}
+          onPress={() =>
+            setViewingReceipt(`${SERVER_BASE}${item.receiptUrl}`)
+          }
+        >
+          <Image
+            source={{ uri: `${SERVER_BASE}${item.receiptUrl}` }}
+            style={styles.receiptThumbnail}
+          />
+          <Text style={styles.receiptAttachedText}>
+            📎 Receipt attached · Tap to view
+          </Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={styles.uploadButton}
+          onPress={() => showReceiptOptions(item)}
+        >
+          <Text style={styles.uploadButtonText}>📷 Attach Receipt</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -188,6 +289,32 @@ export default function DashboardScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10B981" />
         }
       />
+
+      {/* Receipt Viewing Modal */}
+      <Modal
+        visible={viewingReceipt !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewingReceipt(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {viewingReceipt && (
+              <Image
+                source={{ uri: viewingReceipt }}
+                style={styles.modalImage}
+                resizeMode="contain"
+              />
+            )}
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setViewingReceipt(null)}
+            >
+              <Text style={styles.modalCloseText}>✕ Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -238,4 +365,35 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 64, marginBottom: 16 },
   emptyText: { fontSize: 20, fontWeight: "bold", color: "#FFFFFF", marginBottom: 8 },
   emptySubtext: { fontSize: 14, color: "#9CA3AF", textAlign: "center" },
+  // Receipt styles
+  receiptLoading: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: 12, marginTop: 10, backgroundColor: "#8B5CF610",
+    borderRadius: 8, borderWidth: 1, borderColor: "#8B5CF640",
+  },
+  receiptLoadingText: { color: "#8B5CF6", marginLeft: 8, fontSize: 14, fontWeight: "600" },
+  receiptPreview: {
+    flexDirection: "row", alignItems: "center", marginTop: 10,
+    backgroundColor: "#8B5CF610", borderRadius: 8, padding: 10,
+    borderWidth: 1, borderColor: "#8B5CF640",
+  },
+  receiptThumbnail: { width: 48, height: 48, borderRadius: 6, backgroundColor: "#334155" },
+  receiptAttachedText: { color: "#C4B5FD", fontSize: 13, fontWeight: "600", marginLeft: 12, flex: 1 },
+  uploadButton: {
+    paddingVertical: 10, borderRadius: 8, alignItems: "center", marginTop: 10,
+    backgroundColor: "#8B5CF610", borderWidth: 1, borderColor: "#8B5CF640",
+  },
+  uploadButtonText: { color: "#8B5CF6", fontWeight: "bold", fontSize: 14 },
+  // Modal styles
+  modalOverlay: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.9)",
+    justifyContent: "center", alignItems: "center",
+  },
+  modalContent: { width: "100%", height: "100%", justifyContent: "center", alignItems: "center", padding: 20 },
+  modalImage: { width: "100%", height: "80%", borderRadius: 12 },
+  modalCloseButton: {
+    marginTop: 20, backgroundColor: "#1E293B", paddingHorizontal: 32,
+    paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: "#334155",
+  },
+  modalCloseText: { color: "#FFFFFF", fontSize: 16, fontWeight: "bold" },
 });

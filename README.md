@@ -30,7 +30,7 @@ MiniLedger helps you keep a personal ledger of money you've lent to friends. You
 - **Record loans** — who you lent to, how much, and when it's due
 - **Track status** — see which loans are active, repaid, or overdue
 - **Mark as repaid** — settle a loan when the money comes back
-- **Upload receipts** — attach a photo proof of payment
+- **Upload receipts** — attach a photo proof of payment (camera or gallery); tap the thumbnail to view fullscreen
 - **View a summary** — total lent, total repaid, and overdue amounts at a glance
 
 ---
@@ -56,8 +56,9 @@ MiniLedger helps you keep a personal ledger of money you've lent to friends. You
 | Technology | Purpose |
 |---|---|
 | **React Native** | Cross-platform mobile framework |
-| **Expo SDK 58** | Managed workflow & tooling |
+| **Expo SDK 57** | Managed workflow & tooling |
 | **Expo Router** | File-based navigation |
+| **Expo Image Picker** | Camera & gallery access for receipt photos |
 | **Expo Secure Store** | Encrypted token storage on device |
 | **Axios** | HTTP client for API calls |
 | **React Native Reanimated** | Smooth animations |
@@ -103,7 +104,7 @@ miniledger/
     ├── context/
     │   └── AuthContext.tsx      # Auth state management (login/logout)
     └── services/
-        └── api.ts              # Axios instance with JWT interceptor
+        └── api.ts              # Axios instance with JWT interceptor + SERVER_BASE export
 ```
 
 ---
@@ -238,6 +239,8 @@ npx expo start
 Scan the QR code with **Expo Go** on your phone.
 
 > **Note:** `localhost` won't work from your phone. You must use your computer's local network IP address in `services/api.ts`.
+>
+> **Receipt uploads:** When you tap **📷 Attach Receipt** on any loan card, the app will prompt you to use the camera or choose from your gallery. The first time you do this, Android will ask for the relevant permission — tap **Allow**. After a successful upload, a thumbnail appears on the card; tap it to view the full image.
 
 ---
 
